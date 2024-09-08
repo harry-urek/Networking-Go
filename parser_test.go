@@ -33,7 +33,7 @@ func TestParserOneCommand(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		conn := strings.NewReader(tc.input)
+		conn := io.ReadWriter(tc.input)
 		parser := &RESPParser{
 			logger: mockLogger,
 			conn:   conn,

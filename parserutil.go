@@ -2,24 +2,41 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"strconv"
 )
 
-func readSimple(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
+func readSimple(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
 	return readStringUntilSr(buf)
 
 }
 
-func readError(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
-	return readSimple(c, buf)
+func readError(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
+
+	return readStringUntilSr(buf)
 }
 
-func readArray(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
-	return readSimple(c, buf)
+func readArray(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (interface{}, error) {
+
+	count, err := readLength(buf)
+	if err != nil {
+		return nil, err
+	}
+	var elems []interface{} = make([]interface{}, count)
+	for w := range count {
+		elem, err := p.ParseOne()
+		if err != nil {
+			return nil, err
+		}
+		elems[w] = elem
+
+	}
+	fmt.Printf("elems : %v\n", elems...)
+	return elems, err
 }
 
-func readInt(c io.ReadWriter, buf *bytes.Buffer) (int64, error) {
+func readInt(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (int64, error) {
 
 	s, err := readStringUntilSr(buf)
 	if err != nil {
@@ -32,7 +49,7 @@ func readInt(c io.ReadWriter, buf *bytes.Buffer) (int64, error) {
 	return v, nil
 }
 
-func readBulk(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
+func readBulk(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
 	l, err := readLength(buf)
 	if err != nil {
 		return "", err
@@ -55,7 +72,7 @@ func readBulk(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// move pointer by 2 for \r \n
+	// movepointer by 2 for \r \n
 	buf.ReadByte()
 	buf.ReadByte()
 
