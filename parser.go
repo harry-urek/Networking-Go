@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
-
-	"github.com/bufbuild/buf/private/buf/cmd/buf/command/breaking"
 )
 
 type RESPParser struct {
