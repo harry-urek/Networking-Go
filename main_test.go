@@ -26,7 +26,7 @@ func TestServer(t *testing.T) {
 	}
 
 	if string(actual) != expected {
-		t.Error("expected %q, but got %q", expected, actual)
+		t.Errorf("expected %q, but got %q", expected, actual)
 
 	}
 

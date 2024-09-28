@@ -7,12 +7,12 @@ import (
 	"strconv"
 )
 
-func readSimple(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
+func readSimple(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
 	return readStringUntilSr(buf)
 
 }
 
-func readError(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
+func readError(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
 
 	return readStringUntilSr(buf)
 }
@@ -36,7 +36,7 @@ func readArray(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (interface{}, 
 	return elems, err
 }
 
-func readInt(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (int64, error) {
+func readInt(c io.ReadWriter, buf *bytes.Buffer) (int64, error) {
 
 	s, err := readStringUntilSr(buf)
 	if err != nil {
@@ -49,7 +49,7 @@ func readInt(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (int64, error) {
 	return v, nil
 }
 
-func readBulk(c io.ReadWriter, buf *bytes.Buffer, p *RESPParser) (string, error) {
+func readBulk(c io.ReadWriter, buf *bytes.Buffer) (string, error) {
 	l, err := readLength(buf)
 	if err != nil {
 		return "", err

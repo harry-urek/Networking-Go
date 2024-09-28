@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tcp-server/config"
 	"io"
 )
 
 type RESPParser struct {
 	logger *Logger
-	conn   io.ReadWriter
-	buf    *bytes.Buffer
-	tbuf   []byte
+
+	conn io.ReadWriter
+	buf  *bytes.Buffer
+	tbuf []byte
 }
 
 // RESP parser needs to be initialized with connection and logger
@@ -30,7 +32,7 @@ func (p *RESPParser) NewByteParser(c io.ReadWriter, l *Logger, initBufByte []byt
 		conn:   c,
 		buf:    buff,
 
-		tbuf: make([]byte, IOBUfferLength),
+		tbuf: make([]byte, IOBUfferMaxLength),
 	}
 
 }
@@ -62,12 +64,12 @@ func (p *RESPParser) ParseOne() (interface{}, error) {
 	}
 	switch b {
 	case '+':
-		return readSimple(p.conn, p.buf, p.logger)
+		return readSimple(p.conn, p.buf)
 	case '-':
-        return readError(p.conn, p.buf,p.logger)
-            )
+		return readError(p.conn, p.buf)
+
 	case '*':
-		return readArray(p.conn, p.buf)
+		return readArray(p.conn, p.buf, p)
 	case ':':
 		return readInt(p.conn, p.buf)
 	case '$':
