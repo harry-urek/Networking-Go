@@ -10,6 +10,40 @@ import (
 	"time"
 )
 
+func main() {
+	s, err := newServer(":8080")
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	s.Start()
+
+	// Wait for a SIGINT or SIGTERM signal to signal fo rshutdown
+
+	sigChan := make(chan os.Signal)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
+
+	fmt.Println("Shutting Down The Server ... ... .. . . .. . ")
+	s.Stop()
+	fmt.Println("Server Shut Down - / | / - | /")
+}
+
+/*
+
+Create a new net.Listener object that listens for incoming connections on a specified address using the net.Listen function.
+Start two goroutines to handle incoming connections concurrently: one to accept new connections and another to handle them.
+
+In the acceptConnections goroutine, use a for loop and a select statement to listen for incoming connections on the listener and send them over a channel.
+In the handleConnections goroutine, use a for loop and a select statement to receive connections from the channel and handle them in separate goroutines.
+In the handleConnection function, handle the incoming connection by performing any necessary processing or sending data to the client.
+
+Implement graceful shutdown by creating a shutdown channel that signals to the goroutines that they should stop processing connections.
+Close the listener and wait for the goroutines to finish using a sync.WaitGroup.
+
+*/
+
 type server struct {
 	wg         sync.WaitGroup
 	listener   net.Listener
@@ -18,6 +52,9 @@ type server struct {
 }
 
 func newServer(addr string) (*server, error) {
+	// Create a new net.Listener object that listens for incoming connections on a specified address
+	// using the net.Listen function.
+
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to listen on address %s : %w", addr, err)
@@ -75,6 +112,8 @@ func (s *server) handleConnection(conn net.Conn) {
 
 }
 func (s *server) Start() {
+	// Start two goroutines to handle incoming connections concurrently:
+	// one to accept new connections and another to handle them.
 	s.wg.Add(2)
 	go s.acceptConnections()
 	go s.handleConnections()
@@ -99,24 +138,4 @@ func (s *server) Stop() {
 		return
 
 	}
-}
-
-func main() {
-	s, err := newServer(":8080")
-	if err != nil {
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	s.Start()
-
-	// Wait for a SIGINT or SIGTERM signal to signal fo rshutdown
-
-	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	fmt.Println("Shutting Down The Server ... ... .. . . .. . ")
-	s.Stop()
-	fmt.Println("Server Shut Down - / | / - | /")
 }
