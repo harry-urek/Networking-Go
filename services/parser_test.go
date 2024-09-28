@@ -2,97 +2,129 @@ package services
 
 import (
 	"bytes"
-	"fmt"
-	"io"
-	"strings"
+	"errors"
+	/* "io" */
 	"testing"
 )
 
-// MockLogger is a simplified logger for testing
-type MockLogger struct{}
-
-// LogCommand simulates logging a command (for testing purposes)
-func (l *MockLogger) LogCommand(clientID, command string) {
-	fmt.Printf("Logged command: %s\n", command)
+// Mock connection to simulate a ReadWriter
+type mockConn struct {
+	readBuffer  *bytes.Buffer
+	writeBuffer *bytes.Buffer
 }
 
-// TestParserOneCommand tests the ParseOne method for parsing a single RESP command
-func TestParserOneCommand(t *testing.T) {
-	mockLogger := &MockLogger{}
-
-	// Example RESP commands
-	testCases := []struct {
-		input    string
-		expected interface{}
-	}{
-		{"+OK\r\n", "OK"},                                                 // Simple string
-		{"-Error message\r\n", "Error message"},                           // Error string
-		{":1000\r\n", int64(1000)},                                        // Integer
-		{"$6\r\nfoobar\r\n", "foobar"},                                    // Bulk string
-		{"*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n", []interface{}{"foo", "bar"}}, // Array
-	}
-
-	for _, tc := range testCases {
-		conn := io.ReadWriter(tc.input)
-		parser := &RESPParser{
-			logger: mockLogger,
-			conn:   conn,
-			buf:    &bytes.Buffer{},
-			tbuf:   make([]byte, 1024), // Temporary buffer for testing
-		}
-
-		// Parsing the input
-		result, err := parser.ParseOne()
-		if err != nil {
-			t.Fatalf("Unexpected error: %v", err)
-		}
-
-		// Check the result
-		if fmt.Sprintf("%v", result) != fmt.Sprintf("%v", tc.expected) {
-			t.Errorf("Expected %v, got %v", tc.expected, result)
-		} else {
-			fmt.Printf("Test passed for input: %s, result: %v\n", tc.input, result)
-		}
+func newMockConn(input string) *mockConn {
+	return &mockConn{
+		readBuffer:  bytes.NewBufferString(input),
+		writeBuffer: new(bytes.Buffer),
 	}
 }
 
-// TestParserMultipleCommands tests the ParseMultiple method for parsing multiple RESP commands
-func TestParserMultipleCommands(t *testing.T) {
-	mockLogger := &MockLogger{}
+func (m *mockConn) Read(p []byte) (int, error) {
+	return m.readBuffer.Read(p)
+}
 
-	// Example RESP commands
-	input := "*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n*2\r\n$5\r\nhello\r\n$5\r\nworld\r\n"
-	expected := []interface{}{
-		[]interface{}{"foo", "bar"},
-		[]interface{}{"hello", "world"},
-	}
+func (m *mockConn) Write(p []byte) (int, error) {
+	return m.writeBuffer.Write(p)
+}
 
-	conn := strings.NewReader(input)
-	parser := &RESPParser{
-		logger: mockLogger,
-		conn:   conn,
-		buf:    &bytes.Buffer{},
-		tbuf:   make([]byte, 1024),
-	}
+// Helper function for initializing the parser
+func newTestParser(input string) *RESPParser {
+	conn := newMockConn(input)
+	logger := &Logger{file: nil} // No actual logging for the tests
+	parser := new(RESPParser)
+	return parser.NewRESP(conn, logger)
+}
 
-	result, err := parser.ParseMultiple()
+// Test simple RESP "+" message
+func TestParseSimpleString(t *testing.T) {
+	parser := newTestParser("+OK\r\n")
+
+	result, err := parser.ParseOne()
 	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+		t.Errorf("Unexpected error: %v", err)
 	}
 
-	// Check the result
-	if fmt.Sprintf("%v", result) != fmt.Sprintf("%v", expected) {
-		t.Errorf("Expected %v, got %v", expected, result)
-	} else {
-		fmt.Printf("Test passed for input: %s, result: %v\n", input, result)
+	if result != "OK" {
+		t.Errorf("Expected 'OK', got '%v'", result)
 	}
 }
 
-// Main function for running the tests
-func main() {
-	fmt.Println("Testing single command parsing:")
-	TestParserOneCommand(nil)
+// Test RESP "-" error message
+func TestParseError(t *testing.T) {
+	parser := newTestParser("-Error message\r\n")
 
-	fmt.Println("\nTesting multiple command parsing:")
-	TestParserMultipleCommands(nil)
+	result, err := parser.ParseOne()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if result != errors.New("Error message") {
+		t.Errorf("Expected 'Error message', got '%v'", result)
+	}
+}
+
+// Test RESP ":" integer message
+func TestParseInteger(t *testing.T) {
+	parser := newTestParser(":1000\r\n")
+
+	result, err := parser.ParseOne()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if result != int64(1000) {
+		t.Errorf("Expected '1000', got '%v'", result)
+	}
+}
+
+// Test RESP "$" bulk string
+func TestParseBulkString(t *testing.T) {
+	parser := newTestParser("$6\r\nfoobar\r\n")
+
+	result, err := parser.ParseOne()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if result != "foobar" {
+		t.Errorf("Expected 'foobar', got '%v'", result)
+	}
+}
+
+// Test RESP "*" array
+func TestParseArray(t *testing.T) {
+	parser := newTestParser("*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n")
+
+	result, err := parser.ParseOne()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	array, ok := result.([]interface{})
+	if !ok || len(array) != 2 {
+		t.Fatalf("Expected array of length 2, got %v", result)
+	}
+
+	if array[0] != "foo" || array[1] != "bar" {
+		t.Errorf("Expected ['foo', 'bar'], got %v", array)
+	}
+}
+
+// Test parsing multiple RESP messages in a single input stream
+func TestParseMultiple(t *testing.T) {
+	parser := newTestParser("+OK\r\n:123\r\n$6\r\nfoobar\r\n")
+
+	results, err := parser.ParseMultiple()
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	if len(results) != 3 {
+		t.Fatalf("Expected 3 results, got %d", len(results))
+	}
+
+	if results[0] != "OK" || results[1] != int64(123) || results[2] != "foobar" {
+		t.Errorf("Unexpected results: %v", results)
+	}
 }
