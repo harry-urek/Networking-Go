@@ -31,7 +31,7 @@ func (p *RESPParser) NewByteParser(c io.ReadWriter, l *Logger, initBufByte []byt
 		conn:   c,
 		buf:    buff,
 
-		tbuf: make([]byte, IOBUfferMaxLength),
+		tbuf: make([]byte, config.IOBUfferMaxLength),
 	}
 
 }
@@ -53,8 +53,8 @@ func (p *RESPParser) ParseOne() (interface{}, error) {
 		if bytes.Contains(p.tbuf, []byte{'\r', '\n'}) {
 			break
 		}
-		if p.buf.Len() > IOBUfferMaxLength {
-			return nil, fmt.Errorf("Allowed read limit of buffer excceded %d bytes", IOBUfferMaxLength)
+		if p.buf.Len() > config.IOBUfferMaxLength {
+			return nil, fmt.Errorf("Allowed read limit of buffer excceded %d bytes", config.IOBUfferMaxLength)
 		}
 	}
 	b, err := p.buf.ReadByte()
