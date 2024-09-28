@@ -4,16 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tcp-server/config"
+	"github.com/tcp-serve/config"
 	"io"
 )
 
 type RESPParser struct {
 	logger *Logger
-
-	conn io.ReadWriter
-	buf  *bytes.Buffer
-	tbuf []byte
+	conn   io.ReadWriter
+	buf    *bytes.Buffer
+	tbuf   []byte
 }
 
 // RESP parser needs to be initialized with connection and logger
